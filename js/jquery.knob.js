@@ -238,14 +238,15 @@
                     , function () {
                         k.c.d.unbind('touchmove.k touchend.k');
 
-                        // If the touch is released but there's no new value, call a clicked event
-                        if (
-                            s.rH
-                            && (s.rH(s.cv) === false)
-                        ) {
-                            s.clH();  // Added a clicked hook
-                            console.log("Clicked event");  // For debugging
-                            return;
+                        if ( s.v === s.cv) {
+                            if ( s.clH && (s.clH() === false) ) {
+                                return;
+                            }
+                        }
+                        else {
+                            if ( s.rH && (s.rH(s.cv) === false) ) {
+                                return;
+                            }
                         }
 
                         s.val(s.cv);
@@ -297,14 +298,15 @@
                     , function (e) {
                         k.c.d.unbind('mousemove.k mouseup.k keyup.k');
 
-                        // If the click is released and there's no change in value, call a clicked event
-                        if (
-                            s.rH
-                            && (s.rH(s.cv) === false)
-                        ) {
-                            s.clH; // Added a "clicked" event here
-                            console.log("Clicked event"); // Just for debugging
-                            return;
+                        if ( s.v === s.cv) {
+                            if ( s.clH && (s.clH() === false) ) {
+                                return;
+                            }
+                        }
+                        else {
+                            if ( s.rH && (s.rH(s.cv) === false) ) {
+                                return;
+                            }
                         }
 
                         s.val(s.cv);
