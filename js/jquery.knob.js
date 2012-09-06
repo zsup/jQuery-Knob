@@ -63,6 +63,7 @@
         this.cH = null; // change hook
         this.eH = null; // cancel hook
         this.rH = null; // release hook
+        this.clH = null; // clicked hook
 
         this.run = function () {
             var cf = function (e, conf) {
@@ -103,7 +104,8 @@
                     draw : null, // function () {}
                     change : null, // function (value) {}
                     cancel : null, // function () {}
-                    release : null // function (value) {}
+                    release : null, // function (value) {}
+                    clicked : null // function (value) {}
                 }, this.o
             );
 
@@ -210,7 +212,7 @@
                             e.originalEvent.touches[s.t].pageY
                             );
 
-                if (v == s.cv) return;
+                if (v == s.cv) return; // this is where the click event should go. I think.
 
                 if (
                     s.cH
@@ -236,10 +238,15 @@
                     , function () {
                         k.c.d.unbind('touchmove.k touchend.k');
 
+                        // If the touch is released but there's no new value, call a clicked event
                         if (
                             s.rH
                             && (s.rH(s.cv) === false)
-                        ) return;
+                        ) {
+                            s.clH();  // Added a clicked hook
+                            console.log("Clicked event");  // For debugging
+                            return;
+                        }
 
                         s.val(s.cv);
                     }
@@ -290,10 +297,15 @@
                     , function (e) {
                         k.c.d.unbind('mousemove.k mouseup.k keyup.k');
 
+                        // If the click is released and there's no change in value, call a clicked event
                         if (
                             s.rH
                             && (s.rH(s.cv) === false)
-                        ) return;
+                        ) {
+                            s.clH; // Added a "clicked" event here
+                            console.log("Clicked event"); // Just for debugging
+                            return;
+                        }
 
                         s.val(s.cv);
                     }
@@ -342,6 +354,7 @@
             if (this.o.change) this.cH = this.o.change;
             if (this.o.cancel) this.eH = this.o.cancel;
             if (this.o.release) this.rH = this.o.release;
+            if (this.o.clicked) this.clH = this.o.clicked;
 
             if (this.o.displayPrevious) {
                 this.pColor = this.h2rgba(this.o.fgColor, "0.4");

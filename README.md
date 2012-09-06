@@ -79,6 +79,8 @@ Hooks
 
 * 'cancel' : triggered on [esc] keydown
 
+* 'clicked' : executed on release when the value hasn't changed (just a click)
+
 The scope (this) of each hook function is the current Knob instance (refer to the demo code).
 
 Example
