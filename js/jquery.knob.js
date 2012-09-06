@@ -51,6 +51,8 @@
         this.g = null; // 2D graphics context for 'pre-rendering'
         this.v = null; // value ; mixed array or integer
         this.cv = null; // change value ; not commited value
+        this.did = null;
+        this.on = null; // on = true; off = false
         this.x = 0; // canvas x position
         this.y = 0; // canvas y position
         this.$c = null; // jQuery canvas element
@@ -63,7 +65,8 @@
         this.cH = null; // change hook
         this.eH = null; // cancel hook
         this.rH = null; // release hook
-        this.clH = null; // clicked hook
+        this.onH = null;
+        this.offH = null;
 
         this.run = function () {
             var cf = function (e, conf) {
@@ -82,6 +85,10 @@
             this.extend();
             this.o = $.extend(
                 {
+                    // Device info
+                    deviceid : this.$.data('deviceid') || "No ID",
+                    devicestatus: this.$.data('devicestatus') || false,
+
                     // Config
                     min : this.$.data('min') || 0,
                     max : this.$.data('max') || 100,
@@ -105,7 +112,8 @@
                     change : null, // function (value) {}
                     cancel : null, // function () {}
                     release : null, // function (value) {}
-                    clicked : null // function (value) {}
+                    turnon : null,
+                    turnoff : null
                 }, this.o
             );
 
@@ -212,7 +220,7 @@
                             e.originalEvent.touches[s.t].pageY
                             );
 
-                if (v == s.cv) return; // this is where the click event should go. I think.
+                if (v == s.cv) return;
 
                 if (
                     s.cH
@@ -238,15 +246,8 @@
                     , function () {
                         k.c.d.unbind('touchmove.k touchend.k');
 
-                        if ( s.v === s.cv) {
-                            if ( s.clH && (s.clH() === false) ) {
-                                return;
-                            }
-                        }
-                        else {
-                            if ( s.rH && (s.rH(s.cv) === false) ) {
-                                return;
-                            }
+                        if ( s.rH && (s.rH(s.cv, s.did) === false) ) {
+                            return;
                         }
 
                         s.val(s.cv);
@@ -258,17 +259,32 @@
 
         this._mouse = function (e) {
 
+            var btn = s.testdistance(e.pageX, e.pageY);
+
+            if (btn) {
+                s.toggle();
+                return;
+            }
+
             var mouseMove = function (e) {
                 var v = s.xy2val(e.pageX, e.pageY);
+
+                // If v returns false, toggle the light
+                if ( !v ) {
+                    s.toggle();
+                    return false;
+                }
+
                 if (v == s.cv) return;
 
                 if (
                     s.cH
                     && (s.cH(v) === false)
-                ) return;
+                ) return true;
 
                 s.change(v);
                 s._draw();
+                return true;
             };
 
             // First click
@@ -298,15 +314,8 @@
                     , function (e) {
                         k.c.d.unbind('mousemove.k mouseup.k keyup.k');
 
-                        if ( s.v === s.cv) {
-                            if ( s.clH && (s.clH() === false) ) {
-                                return;
-                            }
-                        }
-                        else {
-                            if ( s.rH && (s.rH(s.cv) === false) ) {
-                                return;
-                            }
+                        if ( s.rH && (s.rH(s.cv, s.did) === false) ) {
+                            return;
                         }
 
                         s.val(s.cv);
@@ -356,7 +365,8 @@
             if (this.o.change) this.cH = this.o.change;
             if (this.o.cancel) this.eH = this.o.cancel;
             if (this.o.release) this.rH = this.o.release;
-            if (this.o.clicked) this.clH = this.o.clicked;
+            if (this.o.turnon) this.onH = this.o.turnon;
+            if (this.o.turnoff) this.offH = this.o.turnoff;
 
             if (this.o.displayPrevious) {
                 this.pColor = this.h2rgba(this.o.fgColor, "0.4");
@@ -364,6 +374,9 @@
             } else {
                 this.fgColor = this.o.fgColor;
             }
+
+            this.did = this.o.deviceid;
+            this.on = this.o.devicestatus;
 
             return this;
         };
@@ -378,9 +391,11 @@
         this.init = function () {}; // each time configure triggered
         this.change = function (v) {}; // on change
         this.val = function (v) {}; // on release
+        this.testdistance = function (x, y) {};
         this.xy2val = function (x, y) {}; //
         this.draw = function () {}; // on change / on release
         this.clear = function () { this._clear(); };
+        this.toggle = function () {}; // on button click
 
         // Utils
         this.h2rgba = function (h, a) {
@@ -433,6 +448,14 @@
                 return this.v;
             }
         };
+
+        this.testdistance = function (x, y) {
+            var dist = Math.floor(Math.sqrt(
+                Math.pow(x - (this.x + this.w2), 2) +
+                Math.pow(y - (this.y + this.w2), 2)))
+
+            return dist < this.radius - this.lineWidth / 2;
+        }
 
         this.xy2val = function (x, y) {
             var a, ret;
@@ -623,10 +646,25 @@
                 && (sat = eat - this.cursorExt)
                 && (eat = eat + this.cursorExt);
 
+            // Draw the full-size arc
             c.beginPath();
                 c.strokeStyle = this.o.bgColor;
                 c.arc(this.xy, this.xy, this.radius, this.endAngle, this.startAngle, true);
             c.stroke();
+
+            // Create a button radius that is 3px less than the radius minus the lineWidth
+            var br = this.radius - this.lineWidth / 2 - 3;
+
+            // Draw a circular button in the middle
+            c.beginPath();
+                if (this.on) { 
+                    c.fillStyle = r ? this.o.fgColor : this.fgColor;
+                }
+                else {
+                    c.fillStyle = this.o.bgColor;
+                }
+                c.arc(this.xy, this.xy, br, this.endAngle, this.startAngle, true);
+            c.fill();
 
             if (this.o.displayPrevious) {
                 ea = this.startAngle + this.angle(this.v);
@@ -642,11 +680,23 @@
                 r = (this.cv == this.v);
             }
 
+            // Draw the partial arc for the value
             c.beginPath();
                 c.strokeStyle = r ? this.o.fgColor : this.fgColor ;
                 c.arc(this.xy, this.xy, this.radius, sat, eat, false);
             c.stroke();
         };
+
+        this.toggle = function () {
+            this.on = !this.on;
+            if (this.on && this.onH) {
+                this.onH(this.did);
+            }
+            else if (this.offH) {
+                this.offH(this.did);
+            }
+            this._draw();
+        }
 
         this.cancel = function () {
             this.val(this.v);
